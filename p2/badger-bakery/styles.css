@@ -1,0 +1,23 @@
+table,
+th,
+td {
+  border: 1px solid;
+}
+
+.large-text-wrap {
+  inline-size: 600px;
+}
+
+.primary-button {
+  background-color: #009900;
+  color: white;
+  border: #009900;
+  padding: 0.4rem;
+  border-radius: 0.3rem;
+}
+
+.secondary-button {
+  border: none;
+  padding: 0.4rem;
+  border-radius: 0.3rem;
+}

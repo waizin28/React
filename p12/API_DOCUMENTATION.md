@@ -1,0 +1,415 @@
+# CS571 S23 HW12 API Documentation
+
+## At a Glance
+
+All routes are relative to `https://www.cs571.org/s23/hw12/api/`
+
+| Method | URL | Purpose | Return Codes |
+| --- | --- | --- | --- |
+| `GET`| `/chatroom` | Get all chatrooms. | 200, 304 |
+| `GET`| `/numUsers` | Get the number of registered users. | 200, 304 |
+| `GET`| `/numMessages` | Get the number of posted messages. | 200, 304 |
+| `GET`| `/chatroom/:chatroomName/numMessages` | Get the number of messages for the specified chatroom. | 200, 304, 404 |
+| `GET` | `/chatroom/:chatroomName/messages`| Get latest 25 messages for specified chatroom. | 200, 304, 404 |
+| `GET` | `/chatroom/:chatroomName/messages/:messageId`| Get the information for the specified message. | 200, 304, 404 |
+| `POST` | `/chatroom/:chatroomName/messages` | Posts a message to the specified chatroom. | 200, 400, 404, 413 |
+| `DELETE` | `/chatroom/:chatroomName/messages/:messageId` | Deletes the given message. | 200, 400, 401, 404 |
+| `POST` | `/register` | Registers a user account. | 200, 400, 401, 409, 413  |
+| `POST` | `/login` | Logs a user in. | 200, 400, 401, 404 |
+| `POST` | `/logout` | Logs the current user out. | 200 |
+| `GET` | `/whoami` | Gets details about the currently logged in user. | 200, 401 |
+
+An unexpected server error `500` *may* occur during any of these requests. It is likely to do with your request. Make sure that you have included the appropriate headers and, if you are doing a POST, that you have a properly formatted JSON body. If the error persists, please contact a member of the course staff.
+
+Make sure to include credentials and specify a content-type where appropriate. A valid `X-CS571-ID` must be included with each request, otherwise you will recieve a `401` in addition to any of the errors described below.
+
+## In-Depth Explanations
+
+### Getting all Chatrooms
+`GET` `https://www.cs571.org/s23/hw12/api/chatroom`
+
+A `200` (new) or `304` (cached) response will be sent with the list of all chatrooms.
+
+```json
+[
+    "Bascom",
+    "Brogden",
+    "Chamberlin",
+    "Grainger",
+    "Ingraham",
+    "VanVleck",
+    "Vilas"
+]
+```
+
+### Getting Number of Users
+`GET` `https://www.cs571.org/s23/hw12/api/numUsers`
+
+A `200` (new) or `304` (cached) response will be sent with the number of registered users.
+
+```json
+{
+    "msg": "Successfully got the number of users!",
+    "users": 735
+}
+```
+
+### Getting Number of Messages
+`GET` `https://www.cs571.org/s23/hw12/api/numMessages`
+
+A `200` (new) or `304` (cached) response will be sent with the number of messages on BadgerChat.
+
+```json
+{
+    "msg": "Successfully got the number of messages!",
+    "messages": 543
+}
+```
+
+### Getting Number of Messages for Chatroom
+`GET` `https://www.cs571.org/s23/hw12/api/chatroom/:chatroomName/numMessages`
+
+A `200` (new) or `304` (cached) response will be sent with the number of messages for the specified chatroom.
+
+```json
+{
+    "msg": "Successfully got the number of messages!",
+    "messages": 45
+}
+```
+
+If a chatroom is specified that does not exist, a `404` will be returned.
+
+```json
+{
+    "msg": "The specified chatroom does not exist. Chatroom names are case-sensitive."
+}
+```
+
+### Getting Messages for Chatroom
+
+`GET` `https://www.cs571.org/s23/hw12/api/chatroom/:chatroomName/messages`
+
+There is no get all messages; you must get messages for a particular `:chatroomName`. All messages are public, you do *not* need to be logged in to access them. Only up to the latest 25 messages will be returned. A `200` (new) or `304` (cached) response will be sent with messages organized from most recent to least recent. Note that the `created` field is in Unix epoch time.
+
+```json
+{
+    "msg": "Successfully got the latest messages!",
+    "messages": [
+        {
+            "id": 2,
+            "poster": "acct123",
+            "title": "My Test Post",
+            "content": "lorem ipsum dolor sit",
+            "chatroom": "Vilas",
+            "created": 1677515453383
+        },
+        {
+            "id": 1,
+            "poster": "acct123",
+            "title": "My Test Post",
+            "content": "lorem ipsum dolor sit",
+            "chatroom": "Vilas",
+            "created": 1677515193610
+        }
+    ]
+}
+```
+
+If a chatroom is specified that does not exist, a `404` will be returned.
+
+```json
+{
+    "msg": "The specified chatroom does not exist. Chatroom names are case-sensitive."
+}
+```
+
+### Registering a User
+`POST` `https://www.cs571.org/s23/hw12/api/register`
+
+You must register a user with a specified `username` and `password`. 
+
+Requests must include credentials as well as a header `Content-Type: application/json`.
+
+**Example Request Body**
+
+```json
+{
+    "username": "test12456",
+    "password": "p@ssw0rd1"
+}
+```
+
+If the registration is successful, the following `200` will be sent...
+```json
+{
+    "msg": "Successfully created user!",
+    "user": {
+        "id": 4,
+        "username": "test12456"
+    }
+}
+```
+
+A `Set-Cookie` response header will include your JWT in `badgerchat_auth`. This is *not* accessible by JavaScript. The provided token is an irrevocable JWT that will be valid for **1 hour**. All future requests that include credentials will send this cookie with the request.
+
+If you forget to include a `username` or `password`, the following `400` will be sent...
+
+```json
+{
+    "msg": "A request must contain a 'username' and 'password'"
+}
+```
+
+If a user by the requested `username` already exists, the following `409` will be sent...
+
+```json
+{
+    "msg": "The user already exists!"
+}
+```
+
+If the `username` is longer than 64 characters or if the `password` is longer than 128 characters, the following `413` will be sent...
+
+```json
+{
+    "msg": "'username' must be 64 characters or fewer and 'password' must be 128 characters or fewer"
+}
+```
+
+### Logging in to an Account
+
+`POST` `https://www.cs571.org/s23/hw12/api/login`
+
+You must log a user in with their specified `username` and `password`.
+
+Requests must include credentials as well as a header `Content-Type: application/json`.
+
+**Example Request Body**
+
+```json
+{
+    "username": "test12456",
+    "password": "pass123"
+}
+```
+
+If the login is successful, the following `200` will be sent...
+
+```json
+{
+    "msg": "Successfully authenticated.",
+    "user": {
+        "id": 4,
+        "username": "test12456"
+    }
+}
+```
+
+A `Set-Cookie` response header will include your JWT in `badgerchat_auth`. This is *not* accessible by JavaScript. The provided token is an irrevocable JWT that will be valid for **1 hour**. All future requests that include credentials will send this cookie with the request.
+
+If you forget the `username` or `password`, the following `400` will be sent...
+
+```json
+{
+    "msg": "A request must contain a 'username' and 'password'"
+}
+```
+
+If the `username` exists but the `password` is incorrect, the following `401` will be sent...
+
+```json
+{
+    "msg": "Incorrect password."
+}
+```
+
+If the `username` does not exist, the following `404` will be sent...
+
+```json
+{
+    "msg": "That user does not exist!"
+}
+```
+
+### Getting Message by ID
+
+`GET` `https://cs571.org/s23/hw12/api/chatroom/:chatroomName/messages/:messageId`
+
+Gets a particular message by its `:messageId` and the `:chatroomName` that it is in. A `200` (new) or `304` (cached) response will be sent with the message's information.
+
+```json
+{
+    "msg": "Successfully got the message!",
+    "message": {
+        "id": 2468,
+        "poster": "yo",
+        "title": "yooo",
+        "content": "yoooyoooyooo",
+        "chatroom": "Bascom",
+        "created": 1682357814586
+    }
+}
+```
+
+If a chatroom is specified that does not exist, a `404` will be returned.
+
+```json
+{
+    "msg": "The specified chatroom does not exist. Chatroom names are case-sensitive."
+}
+```
+
+Furthermore, if the message does not exist in the provided chatroom, a `404` will be returned.
+
+```json
+{
+    "msg": "No message exists with that id and chatroom name!"
+}
+```
+
+### Posting a Message
+
+`POST` `https://www.cs571.org/s23/hw12/api/chatroom/:chatroomName/messages`
+
+Posting a message is a protected operation; you must have a valid `badgerchat_auth` session. The `:chatroomName` must be specified in the URL, and a post must also have a `title` and `content`.
+
+Requests must include credentials as well as a header `Content-Type: application/json`.
+
+**Example Request Body**
+
+```json
+{
+    "title": "My Test Post",
+    "content": "lorem ipsum dolor sit"
+}
+```
+
+If the post is successful, the following `200` will be sent...
+
+```json
+{
+    "msg": "Successfully posted message!"
+}
+```
+
+If you forget the `title` or `content`, the following `400` will be sent...
+
+```json
+{
+    "msg": "A request must contain a 'title' and 'content'"
+}
+```
+
+If authentication fails (such as an expired token), the following `401` will be sent...
+
+```json
+{
+    "msg": "You must be logged in to make a post!"
+}
+```
+
+If a chatroom is specified that does not exist, a `404` will be returned.
+
+```json
+{
+    "msg": "The specified chatroom does not exist. Chatroom names are case-sensitive."
+}
+```
+
+If the `title` is longer than 128 characters or if the `content` is longer than 1024 characters, the following `413` will be sent...
+```json
+{
+    "msg": "'title' must be 128 characters or fewer and 'content' must be 1024 characters or fewer"
+}
+```
+
+### Deleting a Message
+`DELETE` `https://www.cs571.org/s23/hw12/api/chatroom/:chatroomName/messages/:messageId`
+
+Posting a message is a protected operation; you must have a valid `badgerchat_auth` session. The `:chatroomName` and `:messageId` must be specified in the URL.
+
+Requests must include credentials. There is no request body for this request.
+
+If the delete is successful, the following `200` will be sent...
+
+```json
+{
+    "msg": "Successfully deleted message!"
+}
+```
+
+If authentication fails (such as an expired token), the following `401` will be sent...
+
+```json
+{
+    "msg": "You must be logged in to make a post!"
+}
+```
+
+If you try to delete another user's post, the following `401` will be sent...
+
+```json
+{
+    "msg": "You may not delete another user's post!"
+}
+```
+
+If a chatroom is specified that does not exist, a `404` will be returned.
+
+```json
+{
+    "msg": "The specified chatroom does not exist. Chatroom names are case-sensitive."
+}
+```
+
+If a message is specified that does not exist, a `404` will be returned.
+
+```json
+{
+    "msg": "That message does not exist!"
+}
+```
+
+### Logging out
+`POST` `https://cs571.org/s23/hw12/api/logout`
+
+Logging out will cause the server to respond with a `Set-Cookie` header that will overwrite and delete the `badgerchat_auth`. 
+
+Requests must include credentials. There is no request body for this request.
+
+The following `200` will be sent...
+
+```json
+{
+    "msg": "You have been logged out! Goodbye."
+}
+```
+
+### Who Am I?
+`GET` `https://cs571.org/s23/hw12/api/whoami`
+
+This endpoint will check if a user is logged in and who they claim to be, including when their token was issued and when it will expire in Unix epoch time.
+
+This request must include credentials. There is no request body for this request.
+
+The following `200` will be sent...
+
+```json
+{
+    "user": {
+        "id": 1,
+        "username": "acct123",
+        "iat": 1677545250,
+        "exp": 1677548850
+    }
+}
+```
+
+If the user is not logged in or has an invalid/expired `badgerchat_auth`, the following `401` will be sent...
+
+```json
+{
+    "msg": "Missing 'badgerchat_auth' cookie. Are you logged in?"
+}
+```
